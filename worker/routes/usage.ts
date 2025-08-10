@@ -1,4 +1,5 @@
 import express from 'express';
+import { sql } from 'drizzle-orm';
 import { db, usageLogs, usageSummaries, quotas } from '../lib/db';
 import { calculateCost } from '../lib/usage';
 
@@ -30,18 +31,13 @@ router.get('/stats/:userId', async (req, res) => {
     }
 
     // Get usage logs for the period
-    const usageLogs_result = await db.query.usageLogs.findMany({
-      where: {
-        userId,
-        timestamp: {
-          gte: startDate
-        }
-      }
-    });
+    const usageLogs_result = await db.select().from(usageLogs).where(
+      sql`${usageLogs.userId} = ${userId} AND ${usageLogs.timestamp} >= ${startDate}`
+    );
 
     // Calculate totals
     const totalTokens = usageLogs_result.reduce((sum, log) => sum + log.totalTokens, 0);
-    const totalCost = usageLogs_result.reduce((sum, log) => sum + log.costUsd, 0);
+    const totalCost = usageLogs_result.reduce((sum, log) => sum + Number(log.costUsd), 0);
     const requestCount = usageLogs_result.length;
 
     // Get quota information
@@ -104,23 +100,18 @@ router.get('/check-quota/:userId', async (req, res) => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const monthlyUsage = await db.query.usageLogs.findMany({
-      where: {
-        userId,
-        timestamp: {
-          gte: startOfMonth
-        }
-      }
-    });
+    const monthlyUsage = await db.select().from(usageLogs).where(
+      sql`${usageLogs.userId} = ${userId} AND ${usageLogs.timestamp} >= ${startOfMonth}`
+    );
 
     const totalTokens = monthlyUsage.reduce((sum, log) => sum + log.totalTokens, 0);
-    const totalCost = monthlyUsage.reduce((sum, log) => sum + log.costUsd, 0);
+    const totalCost = monthlyUsage.reduce((sum, log) => sum + Number(log.costUsd), 0);
     const requestCount = monthlyUsage.length;
 
     // Get user quota
-    const userQuota = await db.query.quotas.findFirst({
-      where: { userId }
-    });
+    const userQuota = await db.select().from(quotas).where(
+      sql`${quotas.userId} = ${userId}`
+    ).limit(1).then(results => results[0]);
 
     if (!userQuota) {
       return res.json({
@@ -167,12 +158,11 @@ router.get('/history/:userId', async (req, res) => {
     const { userId } = req.params;
     const { limit = 50, offset = 0 } = req.query;
 
-    const logs = await db.query.usageLogs.findMany({
-      where: { userId },
-      orderBy: { timestamp: 'desc' },
-      limit: Number(limit),
-      offset: Number(offset)
-    });
+    const logs = await db.select().from(usageLogs).where(
+      sql`${usageLogs.userId} = ${userId}`
+    ).orderBy(sql`${usageLogs.timestamp} DESC`)
+    .limit(Number(limit))
+    .offset(Number(offset));
 
     res.json({
       logs,

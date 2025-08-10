@@ -36,7 +36,7 @@ router.post('/search', async (req, res) => {
       return res.status(404).json({ error: 'Company not found' });
     }
 
-    const companyData = await response.json();
+    const companyData = await response.json() as any;
 
     // Filter filings by form types if specified
     const recentFilings = companyData.filings?.recent || {};
