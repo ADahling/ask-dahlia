@@ -35,10 +35,13 @@ export const accessRequests = pgTable('access_requests', {
 export const documents = pgTable('documents', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id),
-  title: text('title').notNull(),
-  mime: text('mime').notNull(),
-  bytes: integer('bytes').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  name: text('name').notNull(),
+  type: text('type').notNull(),
+  size: integer('size').notNull(),
+  status: text('status', { enum: ['processing', 'completed', 'error'] }).notNull().default('processing'),
+  uploadedAt: timestamp('uploaded_at').notNull().defaultNow(),
+  processedAt: timestamp('processed_at'),
+  metadata: jsonb('metadata'),
 });
 
 // Chunks table with pgvector
@@ -97,13 +100,16 @@ export const riskAssessments = pgTable('risk_assessments', {
 // SEC filings table
 export const secFilings = pgTable('sec_filings', {
   id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id),
   cik: text('cik').notNull(),
-  ticker: text('ticker'),
-  form: text('form').notNull(),
-  filedAt: timestamp('filed_at').notNull(),
-  accession: text('accession').notNull(),
-  sectionsJson: jsonb('sections_json'),
-  url: text('url').notNull(),
+  accessionNumber: text('accession_number').notNull(),
+  formType: text('form_type').notNull(),
+  filingDate: timestamp('filing_date').notNull(),
+  reportDate: timestamp('report_date'),
+  companyName: text('company_name').notNull(),
+  documentUrl: text('document_url').notNull(),
+  content: text('content'),
+  addedAt: timestamp('added_at').notNull().defaultNow(),
 });
 
 // Chat sessions table
@@ -115,7 +121,7 @@ export const chatSessions = pgTable('chat_sessions', {
 });
 
 // Chat messages table
-export const chatMessages = pgTable('chat_messages', {
+export const messages = pgTable('chat_messages', {
   id: uuid('id').primaryKey().defaultRandom(),
   sessionId: uuid('session_id').notNull().references(() => chatSessions.id),
   role: text('role', { enum: ['user', 'assistant', 'tool'] }).notNull(),
@@ -127,7 +133,7 @@ export const chatMessages = pgTable('chat_messages', {
 // Citations table
 export const citations = pgTable('citations', {
   id: uuid('id').primaryKey().defaultRandom(),
-  messageId: uuid('message_id').notNull().references(() => chatMessages.id),
+  messageId: uuid('message_id').notNull().references(() => messages.id),
   type: text('type', { enum: ['term', 'clause', 'doc', 'sec'] }).notNull(),
   refId: text('ref_id').notNull(),
   chunkId: uuid('chunk_id').references(() => chunks.id),
@@ -136,7 +142,7 @@ export const citations = pgTable('citations', {
 });
 
 // Saved documents table
-export const savedDocs = pgTable('saved_docs', {
+export const savedDocuments = pgTable('saved_docs', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id),
   title: text('title').notNull(),
@@ -159,11 +165,13 @@ export const usageLogs = pgTable('usage_logs', {
   totalTokens: integer('total_tokens').notNull(),
   ms: integer('ms').notNull(),
   costUsd: decimal('cost_usd', { precision: 10, scale: 6 }).notNull(),
+  sessionId: uuid('session_id'),
+  timestamp: timestamp('timestamp').notNull().defaultNow(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
 // Usage summary table
-export const usageSummary = pgTable('usage_summary', {
+export const usageSummaries = pgTable('usage_summary', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id),
   period: text('period', { enum: ['day', 'week', 'month'] }).notNull(),
@@ -176,10 +184,9 @@ export const usageSummary = pgTable('usage_summary', {
 export const quotas = pgTable('quotas', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id),
-  dailyTokens: integer('daily_tokens').notNull().default(100000),
-  monthlyTokens: integer('monthly_tokens').notNull().default(3000000),
-  dailyCostUsd: decimal('daily_cost_usd', { precision: 10, scale: 2 }).notNull().default('10.00'),
-  monthlyCostUsd: decimal('monthly_cost_usd', { precision: 10, scale: 2 }).notNull().default('250.00'),
+  tokensLimit: integer('tokens_limit').notNull().default(100000),
+  costLimit: decimal('cost_limit', { precision: 10, scale: 2 }).notNull().default('10.00'),
+  requestsLimit: integer('requests_limit').notNull().default(1000),
 });
 
 // Type exports
