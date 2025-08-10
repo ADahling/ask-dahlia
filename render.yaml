@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: ask-dahlia-worker
+    runtime: node
+    buildCommand: cd worker && npm install && npm run build
+    startCommand: cd worker && npm start
+    env: node
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_mRO7ZKtl4sDh@ep-weathered-dawn-adpo4404-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+      - key: WORKER_API_SECRET
+        generateValue: true
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://ask-dahlia.netlify.app
+    region: oregon
