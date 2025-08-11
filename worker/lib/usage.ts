@@ -69,8 +69,8 @@ export function calculateCost(
   promptTokens: number,
   completionTokens: number
 ): number {
-  const providerPricing = PRICING[provider as keyof typeof PRICING] || PRICING.default;
-  const modelPricing = providerPricing[model as keyof typeof providerPricing] || PRICING.default;
+  const providerPricing = (PRICING as any)[provider] || PRICING.default;
+  const modelPricing = (providerPricing as any)[model] || PRICING.default;
 
   const inputCost = (promptTokens / 1000) * modelPricing.input;
   const outputCost = (completionTokens / 1000) * modelPricing.output;

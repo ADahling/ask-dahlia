@@ -1,4 +1,5 @@
 import express from 'express';
+import { sql } from 'drizzle-orm';
 import { db, documents, chunks } from '../lib/db';
 import { uniqueId, timestamp } from '../lib/utils';
 import { OpenAIProvider } from '../lib/providers/openai';
@@ -93,7 +94,8 @@ router.post('/process', async (req, res) => {
           documentId,
           content: chunkText,
           tokenCount: Math.ceil(chunkText.length / 4), // Rough token estimate
-          metadata: { sentence_range: [i, Math.min(i + chunkSize - 1, sentences.length - 1)] }
+          metadata: { sentence_range: [i, Math.min(i + chunkSize - 1, sentences.length - 1)] },
+          embedding: undefined // Will be set later
         });
       }
     }
@@ -123,7 +125,7 @@ router.post('/process', async (req, res) => {
         status: 'completed',
         processedAt: new Date()
       })
-      .where({ id: documentId });
+      .where(sql`${documents.id} = ${documentId}`);
 
     res.json({
       success: true,
@@ -145,16 +147,20 @@ router.get('/status/:documentId', async (req, res) => {
   try {
     const { documentId } = req.params;
 
-    const document = await db.query.documents.findFirst({
-      where: { id: documentId }
-    });
+    const documentResults = await db.select().from(documents).where(
+      sql`${documents.id} = ${documentId}`
+    ).limit(1);
 
+    const document = documentResults[0];
     if (!document) {
       return res.status(404).json({ error: 'Document not found' });
     }
 
     // Get chunk count
-    const chunkCount = await db.select().from(chunks).where({ documentId }).length;
+    const chunkResults = await db.select().from(chunks).where(
+      sql`${chunks.documentId} = ${documentId}`
+    );
+    const chunkCount = chunkResults.length;
 
     res.json({
       id: document.id,

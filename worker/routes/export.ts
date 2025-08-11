@@ -1,4 +1,5 @@
 import express from 'express';
+import { sql } from 'drizzle-orm';
 import { db, chatSessions, messages } from '../lib/db';
 
 const router = express.Router();
@@ -16,18 +17,18 @@ router.post('/chat/:sessionId', async (req, res) => {
     }
 
     // Get chat session and messages
-    const session = await db.query.chatSessions.findFirst({
-      where: { id: sessionId, userId }
-    });
+    const sessionResults = await db.select().from(chatSessions).where(
+      sql`${chatSessions.id} = ${sessionId} AND ${chatSessions.userId} = ${userId}`
+    ).limit(1);
 
+    const session = sessionResults[0];
     if (!session) {
       return res.status(404).json({ error: 'Chat session not found' });
     }
 
-    const sessionMessages = await db.query.messages.findMany({
-      where: { sessionId },
-      orderBy: { timestamp: 'asc' }
-    });
+    const sessionMessages = await db.select().from(messages).where(
+      sql`${messages.sessionId} = ${sessionId}`
+    ).orderBy(sql`${messages.createdAt} ASC`);
 
     // TODO: Implement export formats (PDF, DOCX, HTML)
     res.status(501).json({

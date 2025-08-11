@@ -205,7 +205,7 @@ router.get('/ticker/:symbol', async (req, res) => {
       return res.status(500).json({ error: 'Could not fetch ticker data' });
     }
 
-    const tickerData = await response.json();
+    const tickerData = await response.json() as any;
 
     // Find company by ticker symbol
     const company = Object.values(tickerData).find((company: any) =>

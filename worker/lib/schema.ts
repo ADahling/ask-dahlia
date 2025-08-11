@@ -48,11 +48,13 @@ export const documents = pgTable('documents', {
 export const chunks = pgTable('chunks', {
   id: uuid('id').primaryKey().defaultRandom(),
   documentId: uuid('document_id').notNull().references(() => documents.id),
+  content: text('content').notNull(),
+  tokenCount: integer('token_count'),
+  metadata: jsonb('metadata'),
+  embedding: vector('embedding', { dimensions: 1536 }), // OpenAI embeddings dimension
   page: integer('page'),
   start: integer('start'),
   end: integer('end'),
-  text: text('text').notNull(),
-  embedding: vector('embedding', { dimensions: 1536 }), // OpenAI embeddings dimension
 }, (table) => {
   return {
     embeddingIdx: index('chunks_embedding_idx').using('ivfflat', table.embedding.op('vector_cosine_ops')),
@@ -198,7 +200,7 @@ export type Chunk = typeof chunks.$inferSelect;
 export type Term = typeof terms.$inferSelect;
 export type Clause = typeof clauses.$inferSelect;
 export type ChatSession = typeof chatSessions.$inferSelect;
-export type ChatMessage = typeof chatMessages.$inferSelect;
+export type ChatMessage = typeof messages.$inferSelect;
 export type Citation = typeof citations.$inferSelect;
-export type SavedDoc = typeof savedDocs.$inferSelect;
+export type SavedDoc = typeof savedDocuments.$inferSelect;
 export type UsageLog = typeof usageLogs.$inferSelect;

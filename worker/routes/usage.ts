@@ -74,9 +74,9 @@ router.get('/stats/:userId', async (req, res) => {
         tokensLimit: userQuota.tokensLimit,
         tokensUsed: totalTokens,
         tokensRemaining: Math.max(0, userQuota.tokensLimit - totalTokens),
-        costLimit: userQuota.costLimit,
+        costLimit: Number(userQuota.costLimit),
         costUsed: totalCost,
-        costRemaining: Math.max(0, userQuota.costLimit - totalCost),
+        costRemaining: Math.max(0, Number(userQuota.costLimit) - totalCost),
         requestsLimit: userQuota.requestsLimit,
         requestsUsed: requestCount,
         requestsRemaining: Math.max(0, userQuota.requestsLimit - requestCount)
@@ -123,7 +123,7 @@ router.get('/check-quota/:userId', async (req, res) => {
     }
 
     const tokensExceeded = totalTokens >= userQuota.tokensLimit;
-    const costExceeded = totalCost >= userQuota.costLimit;
+    const costExceeded = totalCost >= Number(userQuota.costLimit);
     const requestsExceeded = requestCount >= userQuota.requestsLimit;
 
     res.json({
@@ -139,7 +139,7 @@ router.get('/check-quota/:userId', async (req, res) => {
       },
       limits: {
         tokens: userQuota.tokensLimit,
-        cost: userQuota.costLimit,
+        cost: Number(userQuota.costLimit),
         requests: userQuota.requestsLimit
       }
     });

@@ -45,7 +45,7 @@ export class AnthropicProvider {
       let content = '';
 
       for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text') {
+        if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
           const delta = chunk.delta.text;
           content += delta;
 
@@ -78,7 +78,7 @@ export class AnthropicProvider {
   }
 
   /**
-   * Count tokens for messages and response
+   * Count tokens for messages and response (approximation)
    * @param messages Array of message objects
    * @param responseText Response text
    * @returns Token usage object
@@ -87,45 +87,16 @@ export class AnthropicProvider {
     messages: any[],
     responseText: string
   ): Promise<{ prompt_tokens: number; completion_tokens: number; total_tokens: number }> {
-    try {
-      // Convert messages to Anthropic format
-      const anthropicMessages = this.convertMessages(messages);
+    // Use rough approximation - Anthropic doesn't provide token counting API
+    // Approx 4 chars per token for English
+    const promptString = messages.map(m => `${m.role}: ${m.content}`).join('\n');
+    const promptTokens = Math.ceil(promptString.length / 4);
+    const completionTokens = Math.ceil(responseText.length / 4);
 
-      // Count prompt tokens
-      const promptResult = await this.client.countTokens({
-        messages: anthropicMessages,
-        model: this.model
-      });
-
-      const promptTokens = promptResult.input_tokens;
-
-      // Count completion tokens
-      const completionResult = await this.client.countTokens({
-        messages: [{ role: 'assistant', content: responseText }],
-        model: this.model
-      });
-
-      const completionTokens = completionResult.input_tokens;
-
-      return {
-        prompt_tokens: promptTokens,
-        completion_tokens: completionTokens,
-        total_tokens: promptTokens + completionTokens
-      };
-    } catch (error) {
-      console.error('Token counting error:', error);
-
-      // Fallback: use rough approximation
-      // Approx 4 chars per token for English
-      const promptString = messages.map(m => `${m.role}: ${m.content}`).join('\n');
-      const promptTokens = Math.ceil(promptString.length / 4);
-      const completionTokens = Math.ceil(responseText.length / 4);
-
-      return {
-        prompt_tokens: promptTokens,
-        completion_tokens: completionTokens,
-        total_tokens: promptTokens + completionTokens
-      };
-    }
+    return {
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      total_tokens: promptTokens + completionTokens
+    };
   }
 }
