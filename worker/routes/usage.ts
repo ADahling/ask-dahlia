@@ -41,9 +41,10 @@ router.get('/stats/:userId', async (req, res) => {
     const requestCount = usageLogs_result.length;
 
     // Get quota information
-    const userQuota = await db.query.quotas.findFirst({
-      where: { userId }
-    });
+    const userQuotaResults = await db.select().from(quotas).where(
+      sql`${quotas.userId} = ${userId}`
+    ).limit(1);
+    const userQuota = userQuotaResults[0];
 
     // Group by provider
     const byProvider = usageLogs_result.reduce((acc, log) => {
@@ -55,7 +56,7 @@ router.get('/stats/:userId', async (req, res) => {
         };
       }
       acc[log.provider].tokens += log.totalTokens;
-      acc[log.provider].cost += log.costUsd;
+      acc[log.provider].cost += Number(log.costUsd);
       acc[log.provider].requests += 1;
       return acc;
     }, {} as Record<string, { tokens: number; cost: number; requests: number }>);
