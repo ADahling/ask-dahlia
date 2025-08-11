@@ -44,7 +44,7 @@ This split architecture allows us to:
 
 2. **Environment Variables**
    Configure these environment variables in Netlify:
-   - `WORKER_API_BASE`: The URL of your Render worker (e.g., https://ask-dahlia-worker.onrender.com)
+   - `WORKER_API_BASE`: The URL of your Render worker (e.g., https://your-worker-name.onrender.com)
    - `WORKER_API_SECRET`: Shared secret for HMAC authentication
    - `DATABASE_URL`: Postgres connection string (with pgvector extension)
    - `JWT_SECRET`: Secret for JWT authentication
