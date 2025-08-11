@@ -50,9 +50,22 @@ export async function POST(
       body: requestBody
     });
 
-    const data = await response.json();
+    // Check if this is a streaming response (SSE)
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('text/event-stream')) {
+      // For streaming responses, pipe the response directly
+      return new NextResponse(response.body, {
+        status: response.status,
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive'
+        }
+      });
+    }
 
-    // Return response from Worker API
+    // For non-streaming responses, parse JSON
+    const data = await response.json();
     return NextResponse.json(data, { status: response.status });
 
   } catch (error: any) {
