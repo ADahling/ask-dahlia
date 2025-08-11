@@ -2,6 +2,8 @@ import express from 'express';
 import { PassThrough } from 'stream';
 import { OpenAIProvider } from '../lib/providers/openai';
 import { AnthropicProvider } from '../lib/providers/anthropic';
+import { PerplexityProvider } from '../lib/providers/perplexity';
+
 import { logUsage } from '../lib/usage';
 import { db } from '../lib/db';
 import { chunks, documents, citations } from '../lib/schema';
@@ -16,6 +18,22 @@ const router = express.Router();
  * @param limit Maximum number of chunks to retrieve
  * @returns Array of relevant document chunks
  */
+
+/**
+ * Detect if user query is asking about current events or recent information
+ * @param query User query
+ * @returns boolean indicating if web research is needed
+ */
+function isCurrentEventsQuery(query: string): boolean {
+  const currentEventKeywords = [
+    "recent", "latest", "current", "today", "this week", "this month", "2024", "2025",
+    "news", "update", "happening now", "just announced", "breaking", "trending"
+  ];
+  
+  const lowerQuery = query.toLowerCase();
+  return currentEventKeywords.some(keyword => lowerQuery.includes(keyword));
+}
+
 async function searchDocuments(query: string, userId: string, limit: number = 10) {
   try {
     // For now, use OpenAI to generate embedding for the query
@@ -66,20 +84,30 @@ async function searchDocuments(query: string, userId: string, limit: number = 10
  * @param relevantChunks Retrieved document chunks
  * @returns Augmented messages with context
  */
-function augmentWithContext(originalMessages: any[], relevantChunks: any[]) {
-  if (relevantChunks.length === 0) {
+function augmentWithContext(originalMessages: any[], relevantChunks: any[], webResearchContext: string = "") {
+  if (relevantChunks.length === 0 && !webResearchContext) {
     return originalMessages;
   }
 
-  // Build context from relevant chunks
-  const contextSections = relevantChunks.map((chunk, index) =>
-    `[Document ${index + 1}: ${chunk.documentTitle}]\n${chunk.content}`
-  ).join('\n\n');
+  // Build context from relevant chunks and web research
+  let contextContent = "";
+  
+  if (relevantChunks.length > 0) {
+    const contextSections = relevantChunks.map((chunk, index) =>
+      `[Document ${index + 1}: ${chunk.documentTitle}]\n${chunk.content}`
+    ).join("\n\n");
+    contextContent += `DOCUMENT CONTEXT:\n${contextSections}`;
+  }
+  
+  if (webResearchContext) {
+    if (contextContent) contextContent += "\n\n";
+    contextContent += `WEB RESEARCH CONTEXT:\n${webResearchContext}`;
+  }
 
   const systemPrompt = `You are Dahlia, an AI legal assistant specializing in contract analysis and legal research. You have access to the user's uploaded legal documents and can reference them to provide accurate, contextual answers.
 
-RETRIEVED CONTEXT:
-${contextSections}
+AVAILABLE CONTEXT:
+${contextContent}
 
 INSTRUCTIONS:
 - Use the provided context to answer questions about the user's documents
@@ -146,8 +174,32 @@ router.post('/stream', async (req, res) => {
     console.log('Searching documents for context...');
     const relevantChunks = await searchDocuments(lastUserMessage, userId, 5);
 
+    // Check if we need web research (no relevant docs or current events query)
+    const needsWebResearch = relevantChunks.length === 0 || isCurrentEventsQuery(lastUserMessage);
+    let webResearchContext = "";
+    
+    if (needsWebResearch && process.env.PERPLEXITY_API_KEY && process.env.ANSWERS_PROVIDER === "perplexity") {
+      console.log("Conducting web research with Perplexity Sonar Deep Research...");
+      try {
+        const perplexity = new PerplexityProvider(process.env.PERPLEXITY_API_KEY);
+        const researchResult = await perplexity.research(lastUserMessage, userId, {
+          domains: ["law.cornell.edu", "supreme.court.gov", "uscourts.gov", "sec.gov"],
+          recencyFilter: "month",
+          maxResults: 5
+        });
+        
+        if (researchResult.choices && researchResult.choices[0]) {
+          webResearchContext = researchResult.choices[0].message.content;
+          console.log("Web research completed successfully");
+        }
+      } catch (error) {
+        console.error("Perplexity research failed:", error);
+      }
+    }
+
+
     // Augment messages with document context
-    const augmentedMessages = augmentWithContext(messages, relevantChunks);
+    const augmentedMessages = augmentWithContext(messages, relevantChunks, webResearchContext);
 
     // Select provider based on request
     let llmProvider;
