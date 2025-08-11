@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "export",
+  distDir: "out",
+  trailingSlash: true,
   allowedDevOrigins: ["*.preview.same-app.com"],
   typescript: {
     ignoreBuildErrors: false,
