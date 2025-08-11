@@ -89,14 +89,14 @@ router.post('/process', async (req, res) => {
     for (let i = 0; i < sentences.length; i += chunkSize) {
       const chunkText = sentences.slice(i, i + chunkSize).join('. ').trim();
       if (chunkText.length > 0) {
-        chunks_data.push({
+        const chunkData: any = {
           id: uniqueId(),
           documentId,
           content: chunkText,
           tokenCount: Math.ceil(chunkText.length / 4), // Rough token estimate
-          metadata: { sentence_range: [i, Math.min(i + chunkSize - 1, sentences.length - 1)] },
-          embedding: undefined // Will be set later
-        });
+          metadata: { sentence_range: [i, Math.min(i + chunkSize - 1, sentences.length - 1)] }
+        };
+        chunks_data.push(chunkData);
       }
     }
 

@@ -72,8 +72,8 @@ export function calculateCost(
   const providerPricing = (PRICING as any)[provider] || PRICING.default;
   const modelPricing = (providerPricing as any)[model] || PRICING.default;
 
-  const inputCost = (promptTokens / 1000) * modelPricing.input;
-  const outputCost = (completionTokens / 1000) * modelPricing.output;
+  const inputCost = (promptTokens / 1000) * (modelPricing as any).input;
+  const outputCost = (completionTokens / 1000) * (modelPricing as any).output;
 
   return inputCost + outputCost;
 }
@@ -107,7 +107,7 @@ export async function logUsage(usageData: UsageData): Promise<void> {
       completionTokens,
       totalTokens,
       ms,
-      costUsd,
+      costUsd: costUsd.toString(),
       sessionId
     });
 

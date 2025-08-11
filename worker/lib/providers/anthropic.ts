@@ -45,7 +45,7 @@ export class AnthropicProvider {
       let content = '';
 
       for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
+        if (chunk.type === 'content_block_delta' && chunk.delta && 'text' in chunk.delta) {
           const delta = chunk.delta.text;
           content += delta;
 
