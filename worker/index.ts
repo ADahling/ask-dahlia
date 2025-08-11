@@ -44,6 +44,11 @@ app.use(cors({
   credentials: true
 }));
 
+// Health check endpoint (no auth required)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Authentication middleware
 app.use((req, res, next) => {
   // Skip auth for OPTIONS requests (preflight)
@@ -74,11 +79,6 @@ app.use((req, res, next) => {
     console.error('Auth error:', error);
     res.status(500).json({ error: 'Authentication error' });
   }
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
 });
 
 // API routes
